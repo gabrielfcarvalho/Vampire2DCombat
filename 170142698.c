@@ -5,7 +5,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <termios.h>
+#include <unistd.h>
 #include <time.h>
+#include <fcntl.h>
 
 #define MAX_LINHAS_MAPA 30
 #define MAX_COLUNAS_MAPA 80
@@ -46,7 +49,6 @@ typedef struct Vampiro_info
 typedef struct Usuario
 {
 	coordenada posicao;
-	int sala_atual;
 	int vidas;
 	int esta_vivo;
 	int level;
@@ -59,11 +61,27 @@ typedef struct Usuario
 typedef struct Jogo_info
 {
 	int n_vampiros, n_linhas, n_colunas;
+	Usuario jogador;
 
 	char mapa[MAX_LINHAS_MAPA][MAX_COLUNAS_MAPA];
 	Vampiro_info vampiros[MAX_VAMPIROS];
-	Usuario jogador;
 } Jogo_info;
+
+void salva(Jogo_info *jogo)
+{
+	FILE *save_game_file = fopen("jogo.bin", "wb");
+	if (save_game_file == NULL)
+	{
+		printf("fudeu\n");
+		exit(EXIT_FAILURE);
+	}
+
+	fwrite(jogo, sizeof(Jogo_info), 1, save_game_file);
+
+	printf("Jogo Salvo!!!\n");
+
+	fclose(save_game_file);
+}
 
 
 void carrega_mapa(Jogo_info *jogo)
@@ -98,7 +116,7 @@ void carrega_mapa(Jogo_info *jogo)
 	/* Le mapa */
 	for (i = 0; i < jogo->n_linhas; i++)
 	{
-		for (j = 0; j < jogo->n_colunas; j++)
+		for (j = 0; j < jogo->n_colunas;)
 		{
 			c = fgetc(mapa_file);
 			if (c == EOF)
@@ -115,7 +133,7 @@ void carrega_mapa(Jogo_info *jogo)
 					exit(EXIT_FAILURE);
 				}
 
-				jogo->mapa[i][j] = c;
+				jogo->mapa[i][j++] = c;
 			}
 		}
 	}
@@ -184,6 +202,21 @@ void carrega_itens(Jogo_info *jogo)
 }
 
 
+char getch()/*le um caracter da entrada padrão sem o bloqueio de entrada(nao necessita apertar enter) */
+{
+	int ch;
+	struct termios oldt;
+	struct termios newt;
+	tcgetattr(STDIN_FILENO,&oldt);
+	newt = oldt;
+	newt.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+	ch = getchar();
+	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+	return ch;
+}
+
+
 void inicia_jogo(Jogo_info *jogo)
 {
 	int opcao;
@@ -202,6 +235,8 @@ void inicia_jogo(Jogo_info *jogo)
 		while(getchar() != '\n');
 	} while (opcao != 1 && (save_game_file == NULL || opcao != 2));
 
+	system("clear");
+
 	if (opcao == 1)
 	{
 		carrega_mapa(jogo);
@@ -209,7 +244,7 @@ void inicia_jogo(Jogo_info *jogo)
 	}
 	else if (opcao == 2)
 	{
-		/* Carrega jogo */
+		/* Carrega jogo salvo */
 		fread(jogo, sizeof(Jogo_info), 1, save_game_file);
 	}
 	else
@@ -224,9 +259,206 @@ void inicia_jogo(Jogo_info *jogo)
 }
 
 
+void movimentacao_usuario(char letra, Jogo_info *jogo)
+{
+	int proximo_x, proximo_y;
+
+	switch (letra)
+	{
+		case 'w':
+		case 'W':
+			proximo_x = jogo->jogador.posicao.linha - 1;
+			proximo_y = jogo->jogador.posicao.coluna;
+			break;
+
+		case 'a':
+		case 'A':
+			proximo_x = jogo->jogador.posicao.linha;
+			proximo_y = jogo->jogador.posicao.coluna - 1;
+			break;
+
+		case 's':
+		case 'S':
+			proximo_x = jogo->jogador.posicao.linha + 1;
+			proximo_y = jogo->jogador.posicao.coluna;
+			break;
+
+		case 'd':
+		case 'D':
+			proximo_x = jogo->jogador.posicao.linha;
+			proximo_y = jogo->jogador.posicao.coluna + 1;
+			break;
+	}
+
+	switch (jogo->mapa[proximo_x][proximo_y])
+	{
+		case 'V':
+		case '+':
+		case '#':
+		printf("CAMINHO BLOQUEADO!!!!!!\n");
+		break;
+
+		case '-':
+		jogo->mapa[jogo->jogador.posicao.linha][jogo->jogador.posicao.coluna] = jogo->jogador.em_cima_de_objeto ? jogo->jogador.objeto : ' ';
+		jogo->jogador.em_cima_de_objeto = TRUE;
+		jogo->jogador.objeto = '-';
+		jogo->mapa[proximo_x][proximo_y] = '@';
+		jogo->jogador.posicao.linha = proximo_x;
+		jogo->jogador.posicao.coluna = proximo_y;
+		break;
+
+		case 'M':
+		jogo->mapa[jogo->jogador.posicao.linha][jogo->jogador.posicao.coluna] = jogo->jogador.em_cima_de_objeto ? jogo->jogador.objeto : ' ';
+		jogo->jogador.em_cima_de_objeto = TRUE;
+		jogo->jogador.objeto = 'M';
+		jogo->mapa[proximo_x][proximo_y] = '@';
+		jogo->jogador.posicao.linha = proximo_x;
+		jogo->jogador.posicao.coluna = proximo_y;
+		break;
+
+		case ' ':
+		if (jogo->jogador.em_cima_de_objeto)
+		{
+			jogo->mapa[jogo->jogador.posicao.linha][jogo->jogador.posicao.coluna] = jogo->jogador.objeto;
+			jogo->jogador.em_cima_de_objeto = FALSE;
+		}
+		else
+			jogo->mapa[jogo->jogador.posicao.linha][jogo->jogador.posicao.coluna] = ' ';
+
+		jogo->mapa[proximo_x][proximo_y] = '@';
+		jogo->jogador.posicao.linha = proximo_x;
+		jogo->jogador.posicao.coluna = proximo_y;
+		break;
+
+		case 'p':
+		jogo->mapa[jogo->jogador.posicao.linha][jogo->jogador.posicao.coluna] = ' ';
+		jogo->mapa[proximo_x][proximo_y] = '@';
+		jogo->jogador.status.pocoes++;
+		printf("voce ganhou mais uma pocao!\n");
+		jogo->jogador.posicao.linha = proximo_x;
+		jogo->jogador.posicao.coluna = proximo_y;
+		break;
+
+		case 'w':
+		jogo->mapa[jogo->jogador.posicao.linha][jogo->jogador.posicao.coluna] = ' ';
+		jogo->mapa[proximo_x][proximo_y] = '@';
+		jogo->jogador.status.ataque += 10;
+		printf("voce ganhou mais 10 pontos de ataque!\n");
+		jogo->jogador.posicao.linha = proximo_x;
+		jogo->jogador.posicao.coluna = proximo_y;
+		break;
+
+		case 'a':
+		jogo->mapa[jogo->jogador.posicao.linha][jogo->jogador.posicao.coluna] = ' ';
+		jogo->mapa[proximo_x][proximo_y] = '@';
+		jogo->jogador.status.hp_max += 20;
+		jogo->jogador.status.hp += 20;
+		printf("voce ganhou mais 20 pontos de hp_max e recuperou 20 pontos de hp!\n");
+		jogo->jogador.posicao.linha = proximo_x;
+		jogo->jogador.posicao.coluna = proximo_y;
+		break;
+
+	}
+}
+
+
+/* Promove uma movimentacao aleatoria dos vampiros */
+void movimentacao_vampiros(Jogo_info *jogo)
+{
+	int i, proximo_x, proximo_y, movimento;
+
+	for (i = 0; i < jogo->n_vampiros; i++)
+	{
+		movimento = rand() % 4;
+
+		switch (movimento)
+		{
+			case 0:
+				proximo_x = jogo->vampiros[i].posicao.linha - 1;
+				proximo_y = jogo->vampiros[i].posicao.coluna;
+				break;
+
+			case 1:
+				proximo_x = jogo->vampiros[i].posicao.linha;
+				proximo_y = jogo->vampiros[i].posicao.coluna - 1;
+				break;
+
+			case 2:
+				proximo_x = jogo->vampiros[i].posicao.linha + 1;
+				proximo_y = jogo->vampiros[i].posicao.coluna;
+				break;
+
+			case 3:
+				proximo_x = jogo->vampiros[i].posicao.linha;
+				proximo_y = jogo->vampiros[i].posicao.coluna + 1;
+				break;
+		}
+
+		if (jogo->mapa[proximo_x][proximo_y] == ' ')
+		{
+			jogo->mapa[jogo->vampiros[i].posicao.linha][jogo->vampiros[i].posicao.coluna] = ' ';
+
+			if (jogo->vampiros[i].tipo == VAMPIRO)
+				jogo->mapa[proximo_x][proximo_y] = 'V';
+			else
+				jogo->mapa[proximo_x][proximo_y] = 'D';
+
+			jogo->vampiros[i].posicao.linha = proximo_x;
+			jogo->vampiros[i].posicao.coluna = proximo_y;
+		}
+	}
+}
+
+
+/* Verifica o caractere colocado pelo usuario e chama as outras funcoes de movimentacao*/
+void movimentacao(Jogo_info *jogo)
+{
+	char letra;
+
+
+	printf("Digite W ou w para se mover para cima,\n");
+	printf("Digite A ou a para se mover para esquerda,\n");
+	printf("Digite S ou s para se mover para baixo,\n");
+	printf("Digite D ou d para se mover para direita\n");
+	printf("Digite Z ou z para salvar o jogo.\n");
+	printf("Digite X ou x para salvar o jogo e sair.\n");
+
+	do
+	{
+		letra = getch();
+
+		if(letra == 'X' || letra == 'x')
+		{
+			salva(jogo);
+			exit(EXIT_SUCCESS);
+		}
+		else if(letra == 'Z' || letra == 'z')
+		{
+			salva(jogo);
+		}
+		else if(letra != 'W' && letra != 'w' &&
+			letra != 'A' && letra != 'a' &&
+			letra != 'S' && letra != 's' &&
+			letra != 'D' && letra != 'd')
+		{
+			printf("\nComando invalido!!!!\n");
+		}
+		else
+		{
+			break;
+		}
+	} while(1);
+
+	system("clear");
+
+	movimentacao_usuario(letra, jogo);
+	movimentacao_vampiros(jogo);
+}
+
+
 int dracula_morto(Jogo_info *jogo)
 {
-	return jogo->vampiros[jogo->n_vampiros - 1].esta_vivo;
+	return jogo->vampiros[jogo->n_vampiros - 1].esta_vivo == FALSE;
 }
 
 
@@ -235,7 +467,6 @@ void inicia_jogador(Usuario *jogador)
 {
 	jogador->level = 1;
 	jogador->esta_vivo = TRUE;
-	jogador->sala_atual = 0;
 	jogador->em_cima_de_objeto = FALSE;
 
 	jogador->status.hp_max = 100;
@@ -244,6 +475,22 @@ void inicia_jogador(Usuario *jogador)
 	jogador->status.ataque = 5;
 	jogador->status.precisao = 50;
 	jogador->status.atordoamento = 20;
+}
+
+void imprimir_mapa(Jogo_info *jogo)
+{
+	int i,j;
+	
+	printf("Vidas: %d\t Hp: %d/%d\t Level:%d\t Pocoes:%d\n", jogo->jogador.vidas, jogo->jogador.status.hp, jogo->jogador.status.hp_max, jogo->jogador.level, jogo->jogador.status.pocoes);
+
+	for(i = 0; i < jogo->n_linhas; i++)
+	{
+		for(j = 0; j < jogo->n_colunas; j++)
+		{
+			printf("%c",jogo->mapa[i][j]);
+		}
+		putchar('\n');
+	}
 }
 
 
@@ -259,11 +506,12 @@ int main()
 	while (jogo.jogador.vidas != 0)
 	{
 		inicia_jogador(&jogo.jogador);
+		imprimir_mapa(&jogo);
 
 		while (jogo.jogador.esta_vivo)
 		{
-			movimentacao(mapa, &jogador);
-			// imprimir_mapa(mapa, &jogador);
+			movimentacao(&jogo);
+			imprimir_mapa(&jogo);
 			// verifica_combate(mapa, &jogador, &salas[jogador.sala_atual]);
 
 			if (dracula_morto(&jogo))
