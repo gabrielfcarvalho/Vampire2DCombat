@@ -530,6 +530,414 @@ void movimentacao(Jogo_info *jogo)
 	movimentacao_vampiros(jogo);
 }
 
+
+Combate_info novo_vampiro(int level)
+{
+	Combate_info vampiro;
+
+	vampiro.hp_max = 100 + (10 * level);
+	vampiro.hp = vampiro.hp_max;
+	vampiro.pocoes = 0;
+	vampiro.ataque = 5 + level;
+	vampiro.precisao = 40 + (2 * level);
+	vampiro.atordoamento = 20 + (3 * level);
+
+	return vampiro;
+}
+
+/*Funcao responsavel por apresentar as possiveis formas de acao do usuario*/
+int EscolhaDoComando_usuario()
+{ 
+	int comando_usuario;
+
+	printf("Escolha alguma das opcoes abaixo e aperte <ENTER>:\n");
+	putchar('\n');
+	printf("1) Ataque Rapido\n");
+	printf("2) Ataque Forte\n");
+	printf("3) Defender\n");
+	printf("4) Usar Pocao\n");
+	printf("5) Fugir\n");
+	printf("opcao:");
+	do{
+		scanf("%d", &comando_usuario);
+		while(getchar() != '\n'); /*Limpa o buffer do teclado para nao aparecer varias mensagens de erro ao colocar varias letras*/
+		if(comando_usuario<1 || comando_usuario>5)
+			printf("Erro! Coloque o numero da opcao e aperte <ENTER>:\n");
+	}while(comando_usuario<1 || comando_usuario>5);
+
+	return comando_usuario;
+}
+
+/*Essa funcao faz com que, aleatoriamente, o computador	escolha alguma das acoes*/
+int EscolhaDoComando_inimigo()
+{ 
+	int comando_inimigo;
+	srand((unsigned)time(NULL));
+	comando_inimigo= 1 + rand()% 4;
+
+	return comando_inimigo;
+}
+
+/*Funcao que mostra se os ataques foram eficazes ou nao*/
+int precisao()
+{ 
+	int precisao;
+	srand((unsigned)time(NULL));
+	precisao = 1 + rand()% 100;
+
+	return precisao;
+}
+
+/* Funcao responsavel por decidir se o vampiro sera ou nao atordoado */
+int atordoamento()
+{
+	int atordoamento;
+	srand((unsigned)time(NULL));
+	atordoamento = 1 + rand()% 100;
+
+	return atordoamento;
+}
+
+resultado_batalha fight(Usuario *jogador, int vampiro_level)
+{
+	int comando_usuario, comando_inimigo;
+	Combate_info vampiro = novo_vampiro(vampiro_level);
+
+	printf("*****************************************\n");
+	printf("           BATALHA DE VAMPIROS           \n");
+	printf("_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_\n");
+
+
+	printf("O seu personagem esta representado na esquerda e o seu oponente a direita.\n\n");
+	printf("*******************************************************************************\n");
+	printf("            Level:%d                     :|:              Level:%d\n", jogador->level, vampiro_level);
+	printf("			ALIADO		:|:             INIMIGO\n");
+	printf("HIT POINTS:	%d/%d			:|:       HIT POINTS:  %d/%d\n", jogador->status.hp, jogador->status.hp_max, vampiro.hp, vampiro.hp_max);
+	printf("POCOES:		0%d			:|:       POCOES:      0%d \n", jogador->status.pocoes, vampiro.pocoes);
+	printf("ATAQUE:		%d			:|:       ATAQUE:      %d\n", jogador->status.ataque, vampiro.ataque);
+	printf("PRECISAO:	0%d%%			:|:       PRECISAO:    0%d%%\n\n\n", jogador->status.precisao, vampiro.precisao);
+	putchar('\n');
+	while(jogador->status.hp > 0 || vampiro.hp > 0)
+	{
+		if (vampiro.hp < 5)
+		{
+			comando_inimigo = 5;
+		}
+		else
+		{
+			comando_usuario = EscolhaDoComando_usuario();
+			comando_inimigo = EscolhaDoComando_inimigo();
+		}
+
+		/*Aqui estao descritas as possibilidades de escolha do usuario e do computador*/
+		if(comando_usuario == 1 && comando_inimigo == 1)
+		{ 
+		  	/*Assim como as consequencias de cada escolha*/
+			if(jogador->status.precisao >= precisao())
+			{				
+				vampiro.hp = vampiro.hp - jogador->status.ataque;
+				printf("Ataque bem sucedido!\n");
+			}	
+			if(vampiro.precisao >= precisao())
+			{
+				jogador->status.hp = jogador->status.hp - vampiro.ataque;
+				printf("Voce foi atacado!\n");
+			}
+			if(jogador->status.precisao < precisao())
+			{
+				printf("Ataque mal sucedido!\n");
+			}
+			if(vampiro.precisao < precisao())
+			{
+				printf("Inimigo errou o ataque\n");
+			}
+		}
+		else if(comando_usuario == 1 && comando_inimigo == 2)
+		{
+			if(jogador->status.precisao >= precisao())
+			{
+				vampiro.hp = vampiro.hp - jogador->status.ataque;
+				printf("Ataque bem sucedido!\n");
+			}
+			if(vampiro.precisao >= precisao())
+			{
+				jogador->status.hp = jogador->status.hp - (vampiro.ataque*2);
+				printf("Voce foi atacado fortemente! Inimigo passivel de atordoamento\n");
+				
+			}
+			if(jogador->status.precisao < precisao())
+			{
+				printf("Ataque mal sucedido!\n");
+			}
+			if(vampiro.precisao < precisao())
+			{
+				printf("Inimigo errou o ataque\n");
+			}
+			if(vampiro.atordoamento >= atordoamento())
+			{
+				printf("O inimigo foi Atordoado!\n");
+			}
+
+		}
+		else if(comando_usuario == 2 && comando_inimigo == 1)
+		{
+			if(vampiro.precisao >= precisao())
+			{
+				jogador->status.hp = jogador->status.hp - vampiro.ataque;
+				printf("Voce foi atacado\n");
+			}
+			if(jogador->status.precisao >= precisao())
+			{
+				vampiro.hp = vampiro.hp - (jogador->status.ataque*2);
+				printf("Voce atacou fortemente o inimigo! Voce esta passivel de atordoamento\n");
+				
+			}
+			if(jogador->status.precisao < precisao())
+			{
+				printf("Ataque mal sucedido!\n");
+			}
+			if(vampiro.precisao < precisao())
+			{
+				printf("Inimigo errou o ataque\n");
+			}
+			if(jogador->status.atordoamento >= atordoamento())
+			{
+				printf("Voce foi Atordoado!\n");
+			}
+
+		}
+		else if(comando_usuario == 2 && comando_inimigo == 2)
+		{
+			if(vampiro.precisao >= precisao())
+			{
+				jogador->status.hp = jogador->status.hp - (vampiro.ataque*2);
+				printf("Voce foi atacado fortemente!\n");
+			}
+			if(jogador->status.precisao >= precisao())
+			{
+				vampiro.hp = vampiro.hp - (jogador->status.ataque*2);
+				printf("Voce atacou fortemente!\n");
+				
+			}
+			if(jogador->status.precisao < precisao())
+			{
+				printf("Ataque mal sucedido!\n");
+			}
+			if(vampiro.precisao < precisao())
+			{
+				printf("Inimigo errou o ataque\n");
+			}
+		}
+		else if(comando_usuario == 1 && comando_inimigo == 3)
+		{
+			if(jogador->status.precisao >= precisao())
+			{
+				vampiro.hp = vampiro.hp - (jogador->status.ataque/2);
+				printf("Ataque bem sucedido mas defendido!\n");
+			}	
+			if(jogador->status.precisao < precisao())
+			{
+				printf("Ataque mal sucedido!\n");
+			}
+			
+		}
+		else if(comando_usuario == 3 && comando_inimigo == 1)
+		{
+			if(vampiro.precisao >= precisao())
+			{
+				jogador->status.hp = jogador->status.hp - (vampiro.ataque/2);
+				printf("Voce foi atacado mas se defendeu!\n");
+			}
+			if(vampiro.precisao < precisao())
+			{
+				printf("Ataque inimigo mal sucedido!\n");
+			}
+		}
+		else if(comando_usuario == 2 && comando_inimigo == 3)
+		{
+			if(jogador->status.precisao >= precisao())
+			{
+				vampiro.hp = vampiro.hp - (jogador->status.ataque/2);
+				printf("Ataque forte bem sucedido mas defendido!\n");
+			}	
+			if(jogador->status.precisao < precisao())
+			{
+				printf("Ataque mal sucedido e o inimigo se defendeu!\n");
+			}
+			printf("Voce ficou atordoado porque o inimigo se defendeu!\n");
+		}
+		else if(comando_usuario == 3 && comando_inimigo == 2)
+		{
+			if(vampiro.precisao >= precisao())
+			{
+				jogador->status.hp = jogador->status.hp - (vampiro.ataque/2);
+				printf("Voce foi atacado fortemente mas se defendeu!\n");
+			}
+			if(vampiro.precisao < precisao())
+			{
+				printf("Ataque inimigo mal sucedido e voce se defendeu!\n");
+			}
+			printf("O inimigo ficou atordoado porque voce se defendeu!\n");
+		}
+		else if(comando_usuario == 3 && comando_inimigo == 3)
+		{
+			jogador->status.hp += 0.1*jogador->status.hp;
+			vampiro.hp += 0.1*vampiro.hp;
+			printf("Ambos se defenderam e ganharam 10%% a mais de hp!\n");
+		}
+		else if((comando_usuario == 1 || comando_usuario == 2)&& comando_inimigo == 4)
+		{
+			if(vampiro.pocoes >= 1)
+			{
+				vampiro.hp += 30;
+				vampiro.pocoes--;
+				printf("O inimigo tomou uma pocao e voce o atacou!\n");
+			}
+			vampiro.hp -= jogador->status.ataque;
+			printf("O inimigo nao tem nenhuma pocao e voce o atacou!\n");
+		}
+		else if((comando_inimigo == 1 || comando_inimigo == 2)&& comando_usuario == 4)
+		{
+			if(jogador->status.pocoes >= 1)
+			{
+				jogador->status.hp +=30;
+				jogador->status.pocoes--;
+				printf("Voce tomou uma pocao e foi atacado!\n");
+			}
+			else if (jogador->status.pocoes == 0)
+			{ 
+				printf("Voce nao possui mais pocoes e foi atacado!\n");
+				jogador->status.hp -= vampiro.ataque;
+				jogador->status.pocoes--;
+			}
+		}
+		else if(comando_usuario == 3 && comando_inimigo == 4)
+		{
+			if(vampiro.pocoes >= 1)
+			{
+				vampiro.hp += 30;
+				vampiro.pocoes--;
+				printf("O inimigo tomou uma pocao enquanto voce se defendia!\n");
+			}
+			else if(vampiro.pocoes == 0)
+			{
+			printf("O inimigo nao tem nenhuma pocao e voce se defendeu!\n");
+			}
+		}
+		else if(comando_usuario == 4 && comando_inimigo == 3)
+		{
+			if(jogador->status.pocoes >= 1)
+			{
+				jogador->status.hp += 30;
+				jogador->status.pocoes--;
+				printf("Voce tomou uma pocao enquanto o inimigo se defendia!\n");
+			}
+			else
+				printf("Voce nao tem pocoes, o inimigo se defendeu\n");
+		}
+		else if(comando_usuario == 4 && comando_inimigo == 4)
+		{
+			if(jogador->status.pocoes >= 1 && vampiro.pocoes >= 1)
+			{
+				jogador->status.hp += 30;
+				jogador->status.pocoes--;
+			
+				vampiro.hp += 30;
+				vampiro.pocoes--;
+				printf("Voce e o inimigo tomaram uma pocao!\n");
+			}
+			else if (jogador->status.pocoes>= 1 && vampiro.pocoes == 0)
+			{
+				jogador->status.hp += 30;
+				jogador->status.pocoes--;
+				printf("Voce tomou uma pocao e o inimigo nao tinha nenhuma para tomar.\n");
+			}
+			else if(jogador->status.pocoes == 0 && vampiro.pocoes>= 1)
+			{
+				vampiro.hp += 30;
+				vampiro.pocoes--;
+				printf("Voce nao possui mais pocoes e o inimigo tomou uma pocao!\n");
+			}
+			else if(jogador->status.pocoes == 0 && vampiro.pocoes == 0)
+			{
+				printf("Nenhum dos dois possuem pocoes!\n");
+			}
+			
+		}
+		else if(comando_usuario == 5)
+		{
+			printf("Fugiu eh?!!hahahaha\n");
+			printf("PeRdEu!!\n");
+			return JOGADOR_FUGIU;
+			
+		}
+		else if(comando_inimigo == 5)
+		{
+			if (vampiro.hp > 0)
+				printf("O inimigo fugiu!\n");
+			printf("Parabens!! Voce ganhou!\n");
+			return JOGADOR_GANHOU;
+			
+		}
+		if(jogador->status.hp > jogador->status.hp_max)
+		{
+			jogador->status.hp = jogador->status.hp_max;
+		}
+		if(vampiro.hp > vampiro.hp_max)
+		{
+			vampiro.hp = vampiro.hp_max;
+		}
+		if(jogador->status.hp <= 0)
+		{
+			break;
+		}
+		if(vampiro.hp <= 0)
+		{
+			break;
+		}
+		if(jogador->status.pocoes < 0)
+			jogador->status.pocoes = 0;
+		if(vampiro.pocoes < 0)
+			vampiro.pocoes = 0;
+		printf("\n\n\n\nO seu personagem esta representado na esquerda e o seu oponente a direita.\n\n");
+		printf("*******************************************************************************\n");
+		printf("            Level:%d                     :|:              Level:%d\n", jogador->level, vampiro_level);
+		printf("			ALIADO		:|:             INIMIGO\n");
+		printf("HIT POINTS:	%d/%d			:|:       HIT POINTS:  %d/%d\n", jogador->status.hp, jogador->status.hp_max, vampiro.hp, vampiro.hp_max);
+		printf("POCOES:		0%d			:|:       POCOES:      0%d \n", jogador->status.pocoes, vampiro.pocoes);
+		printf("ATAQUE:		%d			:|:       ATAQUE:      %d\n", jogador->status.ataque, vampiro.ataque);
+		printf("PRECISAO:	0%d%%			:|:       PRECISAO:    0%d%%\n\n\n", jogador->status.precisao, vampiro.precisao);
+		putchar('\n');
+	}
+
+	if(jogador->status.hp <= 0)
+	{
+		printf("\n\n\nDepois desse ataque voce ja era!Perdedor!\n");
+		return JOGADOR_PERDEU;
+	}
+	else {
+		printf("\n\n\nVoce destruiu ele com o ultimo ataque!Parabens pela vitoria!!\n");
+		return JOGADOR_GANHOU;                                                       
+	}
+}
+
+
+/* Atualiza os atributos do usuario conforme o level*/
+void aumenta_level_usuario(Usuario *jogador)
+{
+	jogador->level++;
+	jogador->status.hp_max += 10;
+	jogador->status.hp += 10;
+	jogador->status.ataque += 1;
+	jogador->status.precisao += 5;
+	jogador->status.atordoamento += 5;
+	if (jogador->status.precisao > 100)
+		jogador->status.precisao = 100;
+	if (jogador->status.atordoamento > 100)
+		jogador->status.atordoamento = 100;
+}
+
+
 void verifica_combate(Jogo_info *jogo)
 {
 	resultado_batalha resultado;
@@ -555,8 +963,7 @@ void verifica_combate(Jogo_info *jogo)
 						continue;
 					}
 					printf("FIGHT!!!\n");
-					resultado = JOGADOR_GANHOU;
-					//resultado = fight(&jogo->jogador, &jogo->vampiros);
+					resultado = fight(&jogo->jogador, jogo->vampiros[i].level);
 
 					switch (resultado)
 					{
@@ -568,7 +975,7 @@ void verifica_combate(Jogo_info *jogo)
 							jogo->jogador.status.hp += 25;
 							if (jogo->jogador.status.hp > jogo->jogador.status.hp_max)
 								jogo->jogador.status.hp = jogo->jogador.status.hp_max;
-							// aumenta_level_usuario(jogador);
+							aumenta_level_usuario(&jogo->jogador);
 							break;
 
 						case JOGADOR_PERDEU:											
@@ -663,6 +1070,7 @@ int main()
 			jogo.jogador.vidas--;
 			carrega_mapa(&jogo);
 			carrega_itens(&jogo);
+			system("clear");
 		}
 	}
 
