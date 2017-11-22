@@ -68,6 +68,9 @@ typedef struct Jogo_info
 	Vampiro_info vampiros[MAX_VAMPIROS];
 } Jogo_info;
 
+
+
+
 void salva(Jogo_info *jogo)
 {
 	FILE *save_game_file = fopen("jogo.bin", "wb");
@@ -287,6 +290,23 @@ void abre_a_porta(Jogo_info *jogo, int indice)
 	}
 }
 
+
+/* Fornece os atributos iniciais do jogador */
+void inicia_jogador(Usuario *jogador)
+{
+	jogador->level = 1;
+	jogador->esta_vivo = TRUE;
+	jogador->em_cima_de_objeto = FALSE;
+
+	jogador->status.hp_max = 100;
+	jogador->status.hp = 100;
+	jogador->status.pocoes = 0;
+	jogador->status.ataque = 5;
+	jogador->status.precisao = 50;
+	jogador->status.atordoamento = 20;
+}
+
+
 void inicia_jogo(Jogo_info *jogo)
 {
 	int opcao;
@@ -311,6 +331,7 @@ void inicia_jogo(Jogo_info *jogo)
 	{
 		carrega_mapa(jogo);
 		carrega_itens(jogo);
+		inicia_jogador(&jogo->jogador);
 	}
 	else if (opcao == 2)
 	{
@@ -999,22 +1020,6 @@ int dracula_morto(Jogo_info *jogo)
 }
 
 
-/* Fornece os atributos iniciais do jogador */
-void inicia_jogador(Usuario *jogador)
-{
-	jogador->level = 1;
-	jogador->esta_vivo = TRUE;
-	jogador->em_cima_de_objeto = FALSE;
-
-	jogador->status.hp_max = 100;
-	jogador->status.hp = 100;
-	jogador->status.pocoes = 0;
-	jogador->status.ataque = 5;
-	jogador->status.precisao = 50;
-	jogador->status.atordoamento = 20;
-}
-
-
 void revive_vampiros(Jogo_info *jogo)
 {
 	int i;
@@ -1048,7 +1053,6 @@ int main()
 
 	while (jogo.jogador.vidas != 0)
 	{
-		inicia_jogador(&jogo.jogador);
 		imprimir_mapa(&jogo);
 
 		while (jogo.jogador.esta_vivo)
@@ -1068,6 +1072,7 @@ int main()
 		if (jogo.jogador.vidas != 0)
 		{
 			jogo.jogador.vidas--;
+			inicia_jogador(&jogo.jogador);
 			carrega_mapa(&jogo);
 			carrega_itens(&jogo);
 			system("clear");
