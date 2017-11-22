@@ -18,6 +18,7 @@
 #define FALSE 0
 
 typedef enum Tipo_vampiro {DRACULA, VAMPIRO} Tipo_vampiro;
+typedef enum resultado_batalha {JOGADOR_GANHOU, JOGADOR_PERDEU, JOGADOR_FUGIU} resultado_batalha;
 
 /* Usada para representar os elementos no mapa */
 typedef struct coordenada
@@ -191,6 +192,23 @@ void carrega_mapa(Jogo_info *jogo)
 }
 
 
+void imprimir_mapa(Jogo_info *jogo)
+{
+	int i,j;
+	
+	printf("Vidas: %d\t Hp: %d/%d\t Level:%d\t Pocoes:%d\n", jogo->jogador.vidas, jogo->jogador.status.hp, jogo->jogador.status.hp_max, jogo->jogador.level, jogo->jogador.status.pocoes);
+
+	for(i = 0; i < jogo->n_linhas; i++)
+	{
+		for(j = 0; j < jogo->n_colunas; j++)
+		{
+			printf("%c",jogo->mapa[i][j]);
+		}
+		putchar('\n');
+	}
+}
+
+
 void carrega_itens(Jogo_info *jogo)
 {
 	FILE *itens_file = fopen("mapa.txt", "r");
@@ -216,6 +234,58 @@ char getch()/*le um caracter da entrada padrão sem o bloqueio de entrada(nao ne
 	return ch;
 }
 
+int e_divisoria(char c)
+{
+	return c == '#' || c == '+' || c == '-';
+}
+
+void abre_a_porta(Jogo_info *jogo, int indice)
+{
+	int i, coluna_min, coluna_max, linha;
+
+	for (coluna_min = jogo->vampiros[indice].posicao.coluna;
+		 !e_divisoria(jogo->mapa[jogo->vampiros[indice].posicao.linha][coluna_min]);
+		 coluna_min--);
+
+	for (coluna_max = jogo->vampiros[indice].posicao.coluna;
+		 !e_divisoria(jogo->mapa[jogo->vampiros[indice].posicao.linha][coluna_max]);
+		 coluna_max++);
+
+	linha = jogo->vampiros[indice].posicao.linha;
+	do
+	{
+		linha--;
+		for (i = coluna_min; i <= coluna_max; i++)
+		{
+			if(jogo->mapa[linha][i] == '+')
+			{
+				jogo->mapa[linha][i] = '-';
+			}
+		}
+	} while(!e_divisoria(jogo->mapa[linha][jogo->vampiros[indice].posicao.coluna]));
+
+	linha = jogo->vampiros[indice].posicao.linha;
+	do
+	{
+		linha++;
+		for (i = coluna_min; i <= coluna_max; i++)
+		{
+			if(jogo->mapa[linha][i] == '+')
+			{
+				jogo->mapa[linha][i] = '-';
+			}
+		}
+	} while(!e_divisoria(jogo->mapa[linha][jogo->vampiros[indice].posicao.coluna]));
+
+	linha = jogo->vampiros[indice].posicao.linha;
+	for (i = coluna_min; i <= coluna_max; i++)
+	{
+		if(jogo->mapa[linha][i] == '+')
+		{
+			jogo->mapa[linha][i] = '-';
+		}
+	}
+}
 
 void inicia_jogo(Jogo_info *jogo)
 {
@@ -369,6 +439,11 @@ void movimentacao_vampiros(Jogo_info *jogo)
 
 	for (i = 0; i < jogo->n_vampiros; i++)
 	{
+		if(!jogo->vampiros[i].esta_vivo)
+		{
+			continue;
+		}
+
 		movimento = rand() % 4;
 
 		switch (movimento)
@@ -455,6 +530,61 @@ void movimentacao(Jogo_info *jogo)
 	movimentacao_vampiros(jogo);
 }
 
+void verifica_combate(Jogo_info *jogo)
+{
+	resultado_batalha resultado;
+	int i, k, l;
+
+	for(i = 0; i < jogo->n_vampiros; i++)
+	{
+		if (!jogo->vampiros[i].esta_vivo)
+			continue;
+
+		for (k = -2; k <= 2; k++)
+		{
+			for (l = -2; l <= 2; l++)
+			{
+				if (jogo->jogador.posicao.linha + k == jogo->vampiros[i].posicao.linha &&
+					jogo->jogador.posicao.coluna + l == jogo->vampiros[i].posicao.coluna)
+				{
+					if ((k > 0 && (jogo->mapa[jogo->jogador.posicao.linha + 1][jogo->jogador.posicao.coluna + l] == '#' || jogo->mapa[jogo->jogador.posicao.linha + 1][jogo->jogador.posicao.coluna + l] == '-' || jogo->mapa[jogo->jogador.posicao.linha + 1][jogo->jogador.posicao.coluna + l] == '+')) ||
+						(k < 0 && (jogo->mapa[jogo->jogador.posicao.linha - 1][jogo->jogador.posicao.coluna + l] == '#' || jogo->mapa[jogo->jogador.posicao.linha - 1][jogo->jogador.posicao.coluna + l] == '-' || jogo->mapa[jogo->jogador.posicao.linha - 1][jogo->jogador.posicao.coluna + l] == '+')) ||
+						(l > 0 && (jogo->mapa[jogo->jogador.posicao.linha + k][jogo->jogador.posicao.coluna + 1] == '#' || jogo->mapa[jogo->jogador.posicao.linha + k][jogo->jogador.posicao.coluna + 1] == '-' || jogo->mapa[jogo->jogador.posicao.linha + k][jogo->jogador.posicao.coluna + 1] == '+')) ||
+						(l < 0 && (jogo->mapa[jogo->jogador.posicao.linha + k][jogo->jogador.posicao.coluna - 1] == '#' || jogo->mapa[jogo->jogador.posicao.linha + k][jogo->jogador.posicao.coluna - 1] == '-' || jogo->mapa[jogo->jogador.posicao.linha + k][jogo->jogador.posicao.coluna - 1] == '+')))
+					{
+						continue;
+					}
+					printf("FIGHT!!!\n");
+					resultado = JOGADOR_GANHOU;
+					//resultado = fight(&jogo->jogador, &jogo->vampiros);
+
+					switch (resultado)
+					{
+						case JOGADOR_GANHOU:
+							jogo->mapa[jogo->vampiros[i].posicao.linha][jogo->vampiros[i].posicao.coluna] = 'M';
+							jogo->vampiros[i].esta_vivo = FALSE;
+							jogo->vampiros[i].turnos_para_reviver = 5;
+							abre_a_porta(jogo, i);
+							jogo->jogador.status.hp += 25;
+							if (jogo->jogador.status.hp > jogo->jogador.status.hp_max)
+								jogo->jogador.status.hp = jogo->jogador.status.hp_max;
+							// aumenta_level_usuario(jogador);
+							break;
+
+						case JOGADOR_PERDEU:											
+							jogo->jogador.esta_vivo = FALSE;
+							break;
+
+						case JOGADOR_FUGIU:
+							jogo->vampiros[i].level++;
+							break;
+					}
+				}
+			}
+		}
+	}
+}
+
 
 int dracula_morto(Jogo_info *jogo)
 {
@@ -477,19 +607,25 @@ void inicia_jogador(Usuario *jogador)
 	jogador->status.atordoamento = 20;
 }
 
-void imprimir_mapa(Jogo_info *jogo)
-{
-	int i,j;
-	
-	printf("Vidas: %d\t Hp: %d/%d\t Level:%d\t Pocoes:%d\n", jogo->jogador.vidas, jogo->jogador.status.hp, jogo->jogador.status.hp_max, jogo->jogador.level, jogo->jogador.status.pocoes);
 
-	for(i = 0; i < jogo->n_linhas; i++)
+void revive_vampiros(Jogo_info *jogo)
+{
+	int i;
+
+	for (i = 0; i < jogo->n_vampiros; i++)
 	{
-		for(j = 0; j < jogo->n_colunas; j++)
+		if(jogo->vampiros[i].turnos_para_reviver == 0)
 		{
-			printf("%c",jogo->mapa[i][j]);
+			if (jogo->mapa[jogo->vampiros[i].posicao.linha][jogo->vampiros[i].posicao.coluna] == 'M')
+			{
+				jogo->vampiros[i].esta_vivo = TRUE;
+				jogo->mapa[jogo->vampiros[i].posicao.linha][jogo->vampiros[i].posicao.coluna] = 'V';
+			}
 		}
-		putchar('\n');
+		else
+		{
+			jogo->vampiros[i].turnos_para_reviver--;
+		}
 	}
 }
 
@@ -511,8 +647,9 @@ int main()
 		while (jogo.jogador.esta_vivo)
 		{
 			movimentacao(&jogo);
+			verifica_combate(&jogo);
+			revive_vampiros(&jogo);
 			imprimir_mapa(&jogo);
-			// verifica_combate(mapa, &jogador, &salas[jogador.sala_atual]);
 
 			if (dracula_morto(&jogo))
 			{
