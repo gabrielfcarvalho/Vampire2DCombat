@@ -76,7 +76,7 @@ void salva(Jogo_info *jogo)
 	FILE *save_game_file = fopen("jogo.bin", "wb");
 	if (save_game_file == NULL)
 	{
-		printf("fudeu\n");
+		printf("aqui\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -94,7 +94,7 @@ void carrega_mapa(Jogo_info *jogo)
 	FILE *mapa_file = fopen("mapa.txt", "r");
 	if (mapa_file == NULL)
 	{
-		printf("fudeu\n");
+		printf("aqui\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -125,7 +125,7 @@ void carrega_mapa(Jogo_info *jogo)
 			c = fgetc(mapa_file);
 			if (c == EOF)
 			{
-				printf("fudeu\n");
+				printf("aqui\n");
 				exit(EXIT_FAILURE);
 			}
 
@@ -217,7 +217,7 @@ void carrega_itens(Jogo_info *jogo)
 	FILE *itens_file = fopen("mapa.txt", "r");
 	if (itens_file == NULL)
 	{
-		printf("fudeu\n");
+		printf("aqui\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -340,7 +340,7 @@ void inicia_jogo(Jogo_info *jogo)
 	}
 	else
 	{
-		printf("fudeu\n");
+		printf("aqui\n");
 		exit(EXIT_FAILURE);
 	}
 
