@@ -1,15 +1,15 @@
-# Vampiro-Combate-2D
+# Vampire Combat 2D
 
-Jogo de terminal onde você explora um mapa 2D enfrentando vampiros. Desenvolvido em C como projeto final para a disciplina de Algoritmos e Programação de Computadores.
+A terminal-based game where you explore a 2D map fighting vampires. Developed in C as the final project for the Algorithms and Computer Programming course.
 
-## Como Jogar
+## How to Play
 
-O jogador usa comandos de teclado para se movimentar pelo mapa, interagir com objetos e entrar em combate com vampiros. O objetivo é derrotar todos os vampiros, incluindo o Drácula, para vencer o jogo.
+The player uses keyboard commands to move around the map, interact with objects, and enter combat with vampires. The goal is to defeat all vampires, including Dracula, to win the game.
 
-## Compilação e Execução (Linux)
+## Compilation and Execution (Linux)
 
-Para compilar e executar o jogo, você precisará do GCC instalado em seu sistema Linux. Siga os passos abaixo:
+To compile and run the game, you need GCC installed on your Linux system. Follow the steps below:
 
 ```bash
-gcc -o VampiroCombate jogo.c
-./VampiroCombate
+gcc -o VampireCombat game.c
+./VampireCombat
