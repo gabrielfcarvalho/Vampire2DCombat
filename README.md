@@ -11,5 +11,5 @@ The player uses keyboard commands to move around the map, interact with objects,
 To compile and run the game, you need GCC installed on your Linux system. Follow the steps below:
 
 ```bash
-gcc -o VampireCombat game.c
+gcc -o VampireCombat 170142698.c
 ./VampireCombat
